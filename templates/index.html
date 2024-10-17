@@ -19,7 +19,7 @@
     <script>
         async function askQuestion() {
             const userInput = document.getElementById('question').value;
-
+    
             // Flask 서버로 질문 전송
             const response = await fetch('/chat', {
                 method: 'POST',
@@ -28,10 +28,16 @@
                 },
                 body: JSON.stringify({ message: userInput }),
             });
-
+    
+            // 서버 응답 처리
             const data = await response.json();
-            document.getElementById('response').innerText = data.response;
+            if (response.ok) {  // 응답이 성공적일 경우
+                document.getElementById('response').innerText = data.response;
+            } else {  // 오류 처리
+                document.getElementById('response').innerText = 'Error: ' + data.error;
+            }
         }
     </script>
+    
 </body>
 </html>
