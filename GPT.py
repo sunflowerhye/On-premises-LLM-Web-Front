@@ -7,7 +7,7 @@ app = Flask(__name__)
 # OpenAI API 키 설정
 openai.api_key = ''
 # 데이터셋 읽기
-data = pd.read_csv('extracted_files/fortune500.csv')  # 여기를 실제 경로로 수정
+data = pd.read_csv('extracted_files/fortune500.csv')  
 
 
 
