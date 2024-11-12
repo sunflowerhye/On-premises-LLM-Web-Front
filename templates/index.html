@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot</title>
+</head>
+<body>
+    <h1>GPT 챗봇</h1>
+
+    <!-- 회원가입 폼 -->
+    <div>
+        <h3>회원가입</h3>
+        <input type="text" id="signup-username" placeholder="Username" />
+        <input type="password" id="signup-password" placeholder="Password" />
+        <input type="email" id="signup-email" placeholder="Email" />
+        <button onclick="signup()">회원가입</button>
+    </div>
+
+    <!-- 로그인 폼 -->
+    <div>
+        <h3>로그인</h3>
+        <input type="text" id="login-username" placeholder="Username" />
+        <input type="password" id="login-password" placeholder="Password" />
+        <button onclick="login()">로그인</button>
+    </div>
+
+    <!-- 로그아웃 버튼 -->
+    <div>
+        <button onclick="logout()">로그아웃</button>
+    </div>
+
+    <!-- 질문 및 응답 -->
+    <div>
+        <label for="question">질문을 입력하세요:</label>
+        <input type="text" id="question" placeholder="질문을 입력해주세요" />
+        <button onclick="askQuestion()">질문 보내기</button>
+    </div>
+
+    <h3>GPT의 답변:</h3>
+    <div id="response"></div>
+
+    <!-- 검색 기록 표시 영역 -->
+    <h3>검색 기록</h3>
+    <div id="history"></div>
+
+    <script>
+        let token = ""; // 로그인 후에 받을 JWT 토큰
+
+        // 회원가입 함수
+            // 회원가입 함수
+            async function signup() {
+            const username = document.getElementById('signup-username').value;
+            const password = document.getElementById('signup-password').value;
+            const email = document.getElementById('signup-email').value;
+
+            const response = await fetch('http://54.164.175.7:5000/signup', {  // 수정된 URL
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password, email }),
+            });
+
+            const data = await response.json();
+            alert(data.message || data.error);
+        }
+
+
+            // 로그인 함수
+            async function login() {
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            const response = await fetch('http://54.164.175.7:5000/login', {  // 수정된 URL
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password }),
+            });
+
+            const data = await response.json();
+            if (response.ok && data.access_token) {
+                token = data.access_token;
+                alert("로그인 성공");
+            } else {
+                alert(data.error || "로그인 실패");
+            }
+        }
+
+
+        // 로그아웃 함수
+        function logout() {
+            token = "";
+            alert("로그아웃 되었습니다.");
+        }
+
+
+        // 질문 보내기 함수
+        async function askQuestion() {
+            const userInput = document.getElementById('question').value;
+
+            const response = await fetch('http://54.164.175.7:5000/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ message: userInput }),
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                document.getElementById('response').innerText = data.response;
+                loadHistory();  // 검색 기록 다시 로드
+            } else {
+                document.getElementById('response').innerText = 'Error: ' + data.error;
+            }
+        }
+
+        // 검색 기록 불러오기 함수
+        async function loadHistory() {
+            const response = await fetch('http://54.164.175.7:5000/get_history', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                }
+            });
+            const history = await response.json();
+            const historyDiv = document.getElementById('history');
+            historyDiv.innerHTML = "";  // 초기화
+
+            history.forEach(record => {
+                const recordElement = document.createElement('div');
+                recordElement.innerText = record.title;
+                recordElement.onclick = () => loadConversation(record.id);
+                historyDiv.appendChild(recordElement);
+            });
+        }
+        
+         // 상세 대화 불러오기 함수
+         async function loadConversation(historyId) {
+            const response = await fetch(`http://localhost:5000/get_conversation/${historyId}`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            const conversationData = await response.json();
+            const conversationDiv = document.getElementById('conversation');
+            conversationDiv.innerHTML = `<p><strong>질문:</strong> ${conversationData.query}</p><p><strong>답변:</strong> ${conversationData.response}</p>`;
+        }
+
+        // 페이지 로드 시 검색 기록 불러오기
+        window.onload = function() {
+            if (token) loadHistory();
+        };
+    </script>
+</body>
+</html>
