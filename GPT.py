@@ -88,8 +88,8 @@ def chat():
 
     # OpenAI API 호출
     try:
-        response = openai.Completion.create(
-            engine="text-davinci-003",
+        response = openai.ChatCompletion.create(
+            model="gpt-4",  
             prompt=message,
             max_tokens=150
         )
