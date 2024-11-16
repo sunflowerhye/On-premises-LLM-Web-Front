@@ -120,6 +120,23 @@ def get_history():
 
     return jsonify(history), 200
 
+    #대화내용 삭제
+@app.route('/delete_conversation/<int:history_id>', methods=['DELETE'])
+@jwt_required()
+def delete_conversation(history_id):
+    username = get_jwt_identity()
+
+    # 삭제 처리
+    cursor = mysql.connection.cursor()
+    cursor.execute("DELETE FROM search_history WHERE id = %s AND username = %s", 
+                   (history_id, username))
+    mysql.connection.commit()
+    cursor.close()
+
+    return jsonify({"message": "대화가 성공적으로 삭제되었습니다."}), 200
+
+
+
 # 특정 검색 기록의 상세 대화를 조회하는 엔드포인트
 @app.route('/get_conversation/<int:history_id>', methods=['GET'])
 @jwt_required()
