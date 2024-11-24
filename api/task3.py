@@ -25,12 +25,12 @@ def generate_marketing_plan():
             f"각 항목은 번호로 구분하여 작성해주세요. "
             f"모든 항목은 반드시 존댓말로 작성해야 하며, 응답 내용은 공백 제외 700자 이상이어야 합니다. "
             f"아래 항목들을 포함하되, 기획안의 제목은 작성하지 말아주세요:\n\n"
-            f"1. 목표: {goal}\n\n"
-            f"2. 타겟층: {target_audience}\n\n"
-            f"3. 전략: {strategy}\n\n"
-            f"4. 홍보: 제품 홍보를 위한 세부 계획을 작성해주세요 (예: 소셜 미디어, 광고, 협찬 등).\n\n"
-            f"5. 예산: {budget}에 기반한 예산 항목을 나열해주세요 (예: 장소 대여, 장비 구매 등).\n\n"
-            f"6. 실행: 제품 홍보 행사와 관련된 구체적인 실행 계획을 작성해주세요 (예: 진행 방식 등).\n\n"
+            f"1. 목표: \n{goal}\n\n"
+            f"2. 타겟층: \n{target_audience}\n\n"
+            f"3. 전략: \n{strategy}\n\n"
+            f"4. 홍보: \n제품 홍보를 위한 세부 계획을 작성해주세요 (예: 소셜 미디어, 광고, 협찬 등).\n\n"
+            f"5. 예산: \n{budget}에 기반한 예산 항목을 나열해주세요 (예: 장소 대여, 장비 구매 등).\n\n"
+            f"6. 실행: \n제품 홍보 행사와 관련된 구체적인 실행 계획을 작성해주세요 (예: 진행 방식 등).\n\n"
             f"결론: 마케팅과 홍보 활동의 중요성을 강조해서 작성해주세요. "
             f"이 계획의 성공을 위한 주요 요인들을 포함하여 설득력 있는 결론을 작성해주세요."
         )
@@ -108,12 +108,12 @@ def download_marketing_plan():
         table3.cell(1, 0).text = "외부 홍보"
         table3.cell(1, 1).text = strategy or "SNS 캠페인, 유튜브 광고"
 
-        # Save document to a BytesIO object
+       
         file_stream = BytesIO()
         doc.save(file_stream)
         file_stream.seek(0)
 
-        # Return the file as a response
+        
         return send_file(file_stream, as_attachment=True, download_name="event_plan.docx")
 
     except Exception as e:
