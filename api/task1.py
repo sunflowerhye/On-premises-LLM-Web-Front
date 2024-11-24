@@ -81,7 +81,7 @@ def generate_promo_storytelling():
                 f"- 제품 설명: {product_info}\n"
                 f"- 홍보 키워드: {keywords}\n"
                 f"- 타겟 대상: {target_audience}\n\n"
-                f"제품의 스토리를 감성적으로 전달할 수 있는 홍보 문구를 한국어로 자연스럽게 작성해주세요."
+                f"제품의 스토리를 전달할 수 있는 홍보 문구를 한국어로 자연스럽게 작성해주세요."
             )}
         ]
         promo_text = call_openai_api(messages)
