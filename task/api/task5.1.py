@@ -1,4 +1,4 @@
-#이미지 생성 및 후처리
+#이미지 생성 +후처리
 from flask import Blueprint, request, jsonify
 from common import find_best_match, data
 from PIL import Image, ImageEnhance, ImageFilter
