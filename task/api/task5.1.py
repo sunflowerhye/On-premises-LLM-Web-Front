@@ -24,7 +24,7 @@ def post_process_image(image_data):
 
         # 대비 조정 (Contrast Enhancement)
         enhancer_contrast = ImageEnhance.Contrast(image)
-        image = enhancer_contrast.enhance(0.8)  # 대비를 1.5배로 증가시킴
+        image = enhancer_contrast.enhance(0.8)  # 대비를 0.8배로 감소시킴
 
         # 후처리된 이미지를 메모리에 저장
         output_image = io.BytesIO()
