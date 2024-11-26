@@ -1,3 +1,4 @@
+#협력업체 행사 진행 이력 검색
 from flask import Blueprint, request, jsonify
 from common import find_best_match, data
 
