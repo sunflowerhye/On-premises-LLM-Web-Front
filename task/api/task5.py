@@ -29,7 +29,7 @@ def generate_ad_image():
         response = openai.Image.create(
             prompt=prompt,
             n=1,  # 생성할 이미지 개수
-            size="420x594"  # A2 이미지 크기
+            size="512x512"  # 이미지 크기
         )
 
         # 생성된 이미지 URL 가져오기
