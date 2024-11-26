@@ -94,7 +94,7 @@ def generate_ad_image():
         brand_name = data.get('brandName', '브랜드')
         product_name = data.get('productName', '제품')
         product_features = data.get('productFeatures', '특징 없음')
-        primary_color = data.get('color', 'blue')  # 기본 색상
+        primary_color = data.get('color', 'white and black')  # 기본 색상
         style = data.get('style', 'modern and elegant')  # 디자인 스타일
         product_type = data.get('productType', 'toner')  # 제품 종류
 
@@ -105,8 +105,8 @@ def generate_ad_image():
         response = openai.Image.create(
             prompt=prompt,
             n=1,  # 생성할 이미지 개수
-            size="512x512"  # 이미지 크기
-            quality="hd",
+            size="1024x1024"  # 이미지 크기('256x256', '512x512', '1024x1024', '1024x1792', '1792x1024')
+            quality="hd", #("standard","hd")
         )
 
         # 생성된 이미지 URL 가져오기
