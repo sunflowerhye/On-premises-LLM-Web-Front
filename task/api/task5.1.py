@@ -17,7 +17,7 @@ def enhance_image(image_data):
 
         # 대비 향상 (텍스트를 더 선명하게 하기 위해 대비를 증가시킴)
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(1.1)  # 대비를 2배로 증가 (필요에 따라 값 조정)
+        img = enhancer.enhance(0.8)  # 대비를 2배로 증가 (필요에 따라 값 조정)
 
         # 이미지 선명도 향상 (블러를 제거하여 더 선명하게 만들기)
         img = img.filter(ImageFilter.SHARPEN)
