@@ -94,7 +94,7 @@ def generate_ad_image():
         brand_name = data.get('brandName', '브랜드')
         product_name = data.get('productName', '제품')
         product_features = data.get('productFeatures', '특징 없음')
-        primary_color = data.get('color', 'white and black')  # 기본 색상
+        primary_color = data.get('color', 'violet')  # 기본 색상
         style = data.get('style', 'modern and elegant')  # 디자인 스타일
         product_type = data.get('productType', 'toner')  # 제품 종류
 
