@@ -19,8 +19,8 @@ def post_process_image(image_data):
         image = enhancer.enhance(2.0)  # 선명도를 두 배 증가시킴
 
         # 배경 흐림 처리 (Gaussian Blur)
-        background = image.copy()
-        background = background.filter(ImageFilter.GaussianBlur(5))  # 배경 흐림 효과 적용
+        # background = image.copy()
+        # background = background.filter(ImageFilter.GaussianBlur(5))  # 배경 흐림 효과 적용
 
         # 대비 조정 (Contrast Enhancement)
         enhancer_contrast = ImageEnhance.Contrast(image)
