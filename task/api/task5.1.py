@@ -36,6 +36,55 @@ def post_process_image(image_data):
         print(f"Error in image post-processing: {e}")
         return None
 
+# 제품 종류별 프롬프트 생성 함수
+def generate_product_prompt(brand_name, product_name, product_type, primary_color, style):
+    prompts = {
+        "toner": (
+            f"Create a fresh and rejuvenating advertisement for the brand '{brand_name}'. "
+            f"The product is a skin toner called '{product_name}', known for its soothing and hydrating effects. "
+            f"The design should feature a calming color palette with '{primary_color}' as the base, showcasing clean and fresh skincare vibes. "
+            f"Ensure the image feels pure and natural, evoking a sense of balance and harmony in the skin."
+        ),
+        "lotion": (
+            f"Create a luxurious and moisturizing advertisement for the brand '{brand_name}'. "
+            f"The product is '{product_name}', a nourishing lotion known for its deep hydration and softening effects. "
+            f"The design should incorporate '{primary_color}' to convey a soothing and rich texture. "
+            f"Ensure the atmosphere is elegant, luxurious, and emphasizes the comfort and care the lotion provides to the skin."
+        ),
+        "essence": (
+            f"Design an elegant and powerful advertisement for the brand '{brand_name}'. "
+            f"The product is '{product_name}', a revitalizing essence known for its skin-strengthening properties. "
+            f"The design should highlight luxurious tones, focusing on the transformative power of the essence with '{primary_color}' as the accent color. "
+            f"Create an image that communicates glowing, youthful skin and vitality."
+        ),
+        "sunscreen": (
+            f"Create a protective and vibrant advertisement for the brand '{brand_name}'. "
+            f"The product is '{product_name}', a high-performance sunscreen known for its powerful protection against UV rays. "
+            f"The design should incorporate bright and bold elements, with '{primary_color}' as the dominant color, symbolizing protection and energy. "
+            f"Ensure the image feels strong, reliable, and conveys a sense of outdoor adventure and safety."
+        ),
+        "cleanser": (
+            f"Create a refreshing and purifying advertisement for the brand '{brand_name}'. "
+            f"The product is '{product_name}', a gentle cleanser that removes impurities and refreshes the skin. "
+            f"The design should feature soft, light tones, with '{primary_color}' as a primary accent color, emphasizing cleanliness and clarity. "
+            f"Ensure the atmosphere is refreshing, evoking a sense of cleanliness and purity."
+        ),
+        "emulsion": (
+            f"Design a smooth and hydrating advertisement for the brand '{brand_name}'. "
+            f"The product is '{product_name}', an emulsion that deeply nourishes and locks in moisture. "
+            f"The design should incorporate '{primary_color}' as a subtle yet elegant tone, reflecting the creamy and smooth texture of the product. "
+            f"Ensure the image feels soft and moisturizing, focusing on hydration and skin radiance."
+        ),
+        "mask": (
+            f"Create an indulgent and rejuvenating advertisement for the brand '{brand_name}'. "
+            f"The product is '{product_name}', a luxurious face mask known for its deep rejuvenation and skin-purifying qualities. "
+            f"The design should use calming and rich tones, with '{primary_color}' as a highlight, conveying a spa-like atmosphere. "
+            f"Make sure the image communicates relaxation, rejuvenation, and self-care."
+        ),
+    }
+
+    return prompts.get(product_type, "Invalid product type")
+
 # Task5: 홍보 이미지 생성
 @task5.route('/generate-ad-image', methods=['POST'])
 def generate_ad_image():
@@ -47,14 +96,10 @@ def generate_ad_image():
         product_features = data.get('productFeatures', '특징 없음')
         primary_color = data.get('color', 'blue')  # 기본 색상
         style = data.get('style', 'modern and elegant')  # 디자인 스타일
+        product_type = data.get('productType', 'toner')  # 제품 종류
 
-        # OpenAI DALL·E 프롬프트 생성
-        prompt = (
-            f"Create a visually stunning advertisement for the brand '{brand_name}'. "
-            f"The product is '{product_name}', which is known for '{product_features}'. "
-            f"The design should feature the primary color '{primary_color}' and have a '{style}' look. "
-            f"Ensure the image feels luxurious and grabs attention."
-        )
+        # 제품 종류에 맞는 프롬프트 생성
+        prompt = generate_product_prompt(brand_name, product_name, product_type, primary_color, style)
 
         # OpenAI API 요청
         response = openai.Image.create(
