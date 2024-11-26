@@ -1,85 +1,126 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+from flask import Blueprint, request, jsonify
+from common import call_openai_api, data
 
-const Task1Page = () => {
-  const [formData, setFormData] = useState({
-    companyName: '',
-    productName: '',
-    productInfo: '',
-    keywords: '',
-    targetAudience: '',
-  });
+task1 = Blueprint('task1', __name__)
 
-  const [generatedInfo, setGeneratedInfo] = useState('');
-  const [loading, setLoading] = useState(false);
+# 감성적 홍보 문구 생성
+@task1.route('/generate-promo-emotional', methods=['POST'])
+def generate_promo_emotional():
+    try:
+        input_data = request.json
+        company_name = input_data.get('companyName', '')
+        product_name = input_data.get('productName', '')
+        product_info = input_data.get('productInfo', '')
+        keywords = input_data.get('keywords', '')
+        target_audience = input_data.get('targetAudience', '')
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-  };
+        messages = [
+            {"role": "system", "content": "당신은 감성적인 홍보 문구를 작성하는 마케팅 전문가입니다."},
+            {"role": "user", "content": (
+                f"다음은 제품 정보입니다:\n"
+                f"- 회사명: {company_name}\n"
+                f"- 제품명: {product_name}\n"
+                f"- 제품 설명: {product_info}\n"
+                f"- 홍보 키워드: {keywords}\n"
+                f"- 타겟 대상: {target_audience}\n\n"
+                f"제품의 느낌과 감동을 전하는 감성적인 홍보 문구를 한국어로 자연스럽게 작성해주세요."
+            )}
+        ]
+        promo_text = call_openai_api(messages)
+        return jsonify({'promoText': promo_text})
+    except Exception as e:
+        print(f"Error in /generate-promo-emotional endpoint: {e}")
+        return jsonify({'error': f"서버 오류 발생: {e}"}), 500
 
-  const handleGenerate = async (endpoint) => {
-    setLoading(true);
-    try {
-      const response = await axios.post(`http://127.0.0.1:5000/task1/${endpoint}`, formData);
-      setGeneratedInfo(response.data.promoText);
-    } catch (error) {
-      console.error('Error generating text:', error);
-      setGeneratedInfo('문구 생성 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
+# 효과 강조 홍보 문구 생성
+@task1.route('/generate-promo-effect', methods=['POST'])
+def generate_promo_effect():
+    try:
+        input_data = request.json
+        company_name = input_data.get('companyName', '')
+        product_name = input_data.get('productName', '')
+        product_info = input_data.get('productInfo', '')
+        keywords = input_data.get('keywords', '')
+        target_audience = input_data.get('targetAudience', '')
 
-  return (
-    <div className="container">
-      <div className="form-container">
-        <h2>홍보 문구 생성기</h2>
-        {Object.keys(formData).map((key) => (
-          <div className="form-group" key={key}>
-            <label>{key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())}</label>
-            <input
-              type="text"
-              name={key}
-              value={formData[key]}
-              onChange={handleChange}
-              placeholder="입력하세요"
-            />
-          </div>
-        ))}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '1rem' }}>
-          <button
-            className="generate-button"
-            onClick={() => handleGenerate('generate-promo-emotional')}
-            disabled={loading}
-          >
-            {loading ? '감성적 홍보 생성 중...' : '감성적 홍보 생성'}
-          </button>
-          <button
-            className="generate-button"
-            onClick={() => handleGenerate('generate-promo-effect')}
-            disabled={loading}
-          >
-            {loading ? '효과 강조 홍보 생성 중...' : '효과 강조 홍보 생성'}
-          </button>
-          <button
-            className="generate-button"
-            onClick={() => handleGenerate('generate-promo-storytelling')}
-            disabled={loading}
-          >
-            {loading ? '스토리텔링 홍보 생성 중...' : '스토리텔링 홍보 생성'}
-          </button>
-        </div>
-      </div>
-      <div className="info-container">
-        <h2>홍보 문구</h2>
-        <div className="generated-info">{generatedInfo || '버튼을 눌러 홍보 문구를 생성하세요!'}</div>
-      </div>
-    </div>
-  );
-};
+        messages = [
+            {"role": "system", "content": "당신은 제품의 효과를 강조한 홍보 문구를 작성하는 마케팅 전문가입니다."},
+            {"role": "user", "content": (
+                f"다음은 제품 정보입니다:\n"
+                f"- 회사명: {company_name}\n"
+                f"- 제품명: {product_name}\n"
+                f"- 제품 설명: {product_info}\n"
+                f"- 홍보 키워드: {keywords}\n"
+                f"- 타겟 대상: {target_audience}\n\n"
+                f"제품의 주요 효과와 뛰어난 특징을 강조하는 홍보 문구를 한국어로 자연스럽게 작성해주세요."
+            )}
+        ]
+        promo_text = call_openai_api(messages)
+        return jsonify({'promoText': promo_text})
+    except Exception as e:
+        print(f"Error in /generate-promo-effect endpoint: {e}")
+        return jsonify({'error': f"서버 오류 발생: {e}"}), 500
 
-export default Task1Page;
+
+# 유머/톡톡 튀는 홍보 문구 생성
+@task1.route('/generate-promo-humor', methods=['POST'])
+def generate_promo_humor():
+    try:
+        input_data = request.json
+        company_name = input_data.get('companyName', '')
+        product_name = input_data.get('productName', '')
+        product_info = input_data.get('productInfo', '')
+        keywords = input_data.get('keywords', '')
+        target_audience = input_data.get('targetAudience', '')
+
+        messages = [
+            {"role": "system", "content": (
+                "당신은 유머러스하면서도 자연스럽고 매력적인 홍보 문구를 작성하는 마케팅 전문가입니다. "
+                "문구는 제품의 특징과 발림성, 향, 효과 등을 재치 있게 표현하며, 독특한 문장으로 소비자의 관심을 끌어야 합니다."
+            )},
+            {"role": "user", "content": (
+                f"다음은 제품 정보입니다:\n"
+                f"- 회사명: {company_name}\n"
+                f"- 제품명: {product_name}\n"
+                f"- 제품 설명: {product_info}\n"
+                f"- 홍보 키워드: {keywords}\n"
+                f"- 타겟 대상: {target_audience}\n\n"
+                f"제품의 발림성, 향, 사용감 등 주요 특징을 중심으로 유머러스하고 매력적인 홍보 문구를 작성해주세요. "
+                f"문구는 짧고 간결하게 작성하며, 일상생활에서 소비자가 공감할 수 있는 상황을 포함해주세요."
+            )}
+        ]
+        promo_text = call_openai_api(messages)
+        return jsonify({'promoText': promo_text})
+    except Exception as e:
+        print(f"Error in /generate-promo-humor endpoint: {e}")
+        return jsonify({'error': f"서버 오류 발생: {e}"}), 500
+
+
+# 맞춤형 홍보 문구 생성
+@task1.route('/generate-promo-personalized', methods=['POST'])
+def generate_promo_personalized():
+    try:
+        input_data = request.json
+        company_name = input_data.get('companyName', '')
+        product_name = input_data.get('productName', '')
+        product_info = input_data.get('productInfo', '')
+        keywords = input_data.get('keywords', '')
+        target_audience = input_data.get('targetAudience', '')
+
+        messages = [
+            {"role": "system", "content": "당신은 맞춤형 홍보 문구를 작성하는 마케팅 전문가입니다."},
+            {"role": "user", "content": (
+                f"다음은 제품 정보입니다:\n"
+                f"- 회사명: {company_name}\n"
+                f"- 제품명: {product_name}\n"
+                f"- 제품 설명: {product_info}\n"
+                f"- 홍보 키워드: {keywords}\n"
+                f"- 타겟 대상: {target_audience}\n\n"
+                f"이 정보를 바탕으로 사용자 맞춤형 홍보 문구를 한국어로 작성해주세요."
+            )}
+        ]
+        promo_text = call_openai_api(messages)
+        return jsonify({'promoText': promo_text})
+    except Exception as e:
+        print(f"Error in /generate-promo-personalized endpoint: {e}")
+        return jsonify({'error': f"서버 오류 발생: {e}"}), 500
