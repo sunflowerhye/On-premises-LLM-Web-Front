@@ -106,6 +106,7 @@ def generate_ad_image():
             prompt=prompt,
             n=1,  # 생성할 이미지 개수
             size="512x512"  # 이미지 크기
+            quality="hd",
         )
 
         # 생성된 이미지 URL 가져오기
