@@ -1,3 +1,5 @@
+#이미지 생성
+
 from flask import Blueprint, request, jsonify
 import openai
 import requests
