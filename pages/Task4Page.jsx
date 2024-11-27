@@ -1,127 +1,175 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import './Task1Page.css';
+import './Task1Page.css'; // 기존 스타일 유지
 
-function Task4Page() {
-    const [formData, setFormData] = useState({
-        product1: '',
-        product2: '',
+const Task4Page = () => {
+  const [formData, setFormData] = useState({
+    goal: '', // 목적
+    targetAudience: '', // 타겟층
+    spaceAndBudget: '', // 공간과 예산
+    customerInterest: '', // 주요 고객 관심사
+    theme: '', // 이벤트 주제
+  });
+
+  const [generatedPlan, setGeneratedPlan] = useState('');
+  const [loadingIndoor, setLoadingIndoor] = useState(false); // 실내 기획 로딩 상태
+  const [loadingOutdoor, setLoadingOutdoor] = useState(false); // 실외 기획 로딩 상태
+  const [loadingTimetable, setLoadingTimetable] = useState(false); // 타임테이블 로딩 상태
+  const [showTimetableButton, setShowTimetableButton] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
     });
-    const [comparisonData, setComparisonData] = useState(null);
-    const [ingredientInfo, setIngredientInfo] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+  };
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({
-            ...formData,
-            [name]: value,
-        });
-    };
+  const handleGenerateIndoorPlan = async () => {
+    setLoadingIndoor(true);
+    try {
+      const response = await axios.post('http://localhost:5000/task4/generate-indoor-event-plan', {
+        ...formData,
+        environment: '실내', // 환경 설정
+      });
+      setGeneratedPlan(response.data.eventPlan || '기획 생성 중 오류가 발생했습니다.');
+      setShowTimetableButton(true);
+    } catch (error) {
+      console.error('Error generating indoor event plan:', error);
+      setGeneratedPlan('기획 생성 중 오류가 발생했습니다.');
+    } finally {
+      setLoadingIndoor(false);
+    }
+  };
 
-    const handleCompare = async () => {
-        setLoading(true);
-        setError('');
-        setComparisonData(null);
-        setIngredientInfo('');
+  const handleGenerateOutdoorPlan = async () => {
+    setLoadingOutdoor(true);
+    try {
+      const response = await axios.post('http://localhost:5000/task4/generate-outdoor-event-plan', {
+        ...formData,
+        environment: '실외', // 환경 설정
+      });
+      setGeneratedPlan(response.data.eventPlan || '기획 생성 중 오류가 발생했습니다.');
+      setShowTimetableButton(true);
+    } catch (error) {
+      console.error('Error generating outdoor event plan:', error);
+      setGeneratedPlan('기획 생성 중 오류가 발생했습니다.');
+    } finally {
+      setLoadingOutdoor(false);
+    }
+  };
 
-        try {
-            const compareResponse = await axios.post('http://127.0.0.1:5000/task4/compare', formData);
-            setComparisonData(compareResponse.data);
+  const handleDownloadTimetable = async () => {
+    setLoadingTimetable(true);
+    try {
+      const response = await axios.post(
+        'http://localhost:5000/task4/download-timetable',
+        formData,
+        { responseType: 'blob' }
+      );
 
-            const commonIngredients = compareResponse.data.comparison.common_ingredients;
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'event_timetable.docx');
+      document.body.appendChild(link);
+      link.click();
+    } catch (error) {
+      console.error('Error downloading timetable:', error);
+    } finally {
+      setLoadingTimetable(false);
+    }
+  };
 
-            // 공통 성분에 대한 추가 설명 요청
-            if (!commonIngredients || commonIngredients.length === 0) {
-                setIngredientInfo('공통 성분이 없어 추가 설명이 없습니다.');
-            } else {
-                try {
-                    const explanation = await axios.post('http://127.0.0.1:5000/task4/explain', {
-                        ingredients: commonIngredients,
-                    });
-                    setIngredientInfo(explanation.data.explanation || '설명이 제공되지 않았습니다.');
-                } catch (explainError) {
-                    console.error("OpenAPI 호출 실패:", explainError);
-                    setIngredientInfo('OpenAPI 호출 중 문제가 발생했습니다. 서버 로그를 확인하세요.');
-                }
-            }
-        } catch (compareError) {
-            console.error("Compare API 호출 실패:", compareError);
-            setError('제품 비교 중 문제가 발생했습니다. 입력값을 확인하세요.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="container">
-            <div className="form-container">
-                <h2>화장품 성분 비교</h2>
-                {Object.keys(formData).map((key) => (
-                    <div className="form-group" key={key}>
-                        <label>{key === 'product1' ? '첫 번째 제품명' : '두 번째 제품명'}</label>
-                        <input
-                            type="text"
-                            name={key}
-                            value={formData[key]}
-                            onChange={handleChange}
-                            placeholder="제품명을 입력하세요"
-                        />
-                    </div>
-                ))}
-                <button
-                    className="generate-button"
-                    onClick={handleCompare}
-                    disabled={loading}
-                >
-                    {loading ? '비교 중...' : '비교하기'}
-                </button>
-            </div>
-
-            <div className="info-container">
-                <h2>비교 결과</h2>
-                {error && <p className="error-message">{error}</p>}
-                {comparisonData ? (
-                    <table className="comparison-table">
-                        <thead>
-                            <tr>
-                                <th>항목</th>
-                                <th>{comparisonData.product1.name}</th>
-                                <th>{comparisonData.product2.name}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>유사도 점수</td>
-                                <td>{comparisonData.product1.score}</td>
-                                <td>{comparisonData.product2.score}</td>
-                            </tr>
-                            <tr>
-                                <td>공통 성분</td>
-                                <td colSpan="2">
-                                    {comparisonData.comparison.common_ingredients.join(', ') || '없음'}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>고유 성분</td>
-                                <td>{comparisonData.comparison.unique_to_product1.join(', ') || '없음'}</td>
-                                <td>{comparisonData.comparison.unique_to_product2.join(', ') || '없음'}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                ) : (
-                    <p className="generated-info">비교 결과가 여기에 표시됩니다.</p>
-                )}
-                {ingredientInfo && (
-                    <div className="ingredient-info">
-                        <h3>주요 성분 설명</h3>
-                        <p>{ingredientInfo}</p>
-                    </div>
-                )}
-            </div>
+  return (
+    <div className="container">
+      <div className="form-container">
+        <h1>부스/이벤트 기획</h1>
+        {Object.keys(formData).map((key) => (
+          <div className="form-group" key={key}>
+            <label>
+              {{
+                goal: 'Goal',
+                targetAudience: 'Target Audience',
+                spaceAndBudget: 'Space and Budget',
+                customerInterest: 'Customer Interest',
+                theme: 'Event Theme',
+              }[key]}
+            </label>
+            <input
+              type="text"
+              name={key}
+              value={formData[key]}
+              onChange={handleChange}
+              placeholder={{
+                goal: '이벤트의 목적을 입력하세요.',
+                targetAudience: '이벤트 대상을 입력하세요.',
+                spaceAndBudget: '예: 10평, 200만 원',
+                customerInterest: '예: 친환경 제품, SNS 활동',
+                theme: '예: 자연 친화적인 라이프스타일',
+              }[key]}
+            />
+          </div>
+        ))}
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', justifyContent: 'center' }}>
+          <button
+            className="generate-button"
+            onClick={handleGenerateIndoorPlan}
+            disabled={loadingIndoor || loadingOutdoor}
+          >
+            {loadingIndoor ? '실내 기획 생성 중...' : '실내 기획 생성'}
+          </button>
+          <button
+            className="generate-button"
+            onClick={handleGenerateOutdoorPlan}
+            disabled={loadingIndoor || loadingOutdoor}
+          >
+            {loadingOutdoor ? '실외 기획 생성 중...' : '실외 기획 생성'}
+          </button>
         </div>
-    );
-}
+        {showTimetableButton && (
+          <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+            <button
+              className="generate-button"
+              onClick={handleDownloadTimetable}
+              disabled={loadingTimetable}
+            >
+              {loadingTimetable ? '타임 테이블 생성 중...' : '타임 테이블 다운로드'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="info-container">
+        <h2>부스/이벤트 기획</h2>
+        <div
+          className="generated-info"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: generatedPlan ? 'auto' : '200px',
+            border: '1px dashed #ccc', 
+            borderRadius: '0', 
+            padding: '1rem',
+            backgroundColor: '#f9f9f9',
+            fontSize: '1.2em',
+          }}
+        >
+          <pre
+            style={{
+              whiteSpace: 'pre-wrap',
+              wordWrap: 'break-word',
+              fontSize: '1em',
+              textAlign: generatedPlan ? 'left' : 'center',
+            }}
+          >
+            {generatedPlan || '기획 생성 버튼을 눌러주세요!'}
+          </pre>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default Task4Page;
