@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import './Task1Page.css';
+import './Task1Page.css'; // 기존 스타일 유지
 
 const Task2Page = () => {
   const [formData, setFormData] = useState({
-    companyName: '', // 브랜드 이름
-    productName: '', // 제품 이름
-    productInfo: '', // 제품의 주요 기능 및 효과
-    symbol: '', // 제품의 효과를 상징하는 시각적 요소 (ex: 수분을 위한 물방울)
-    keywords: '', // 행동 유도 문구
-    color: '', // 사용자 지정 색상
+    goal: '', // 목적
+    targetAudience: '', // 타겟층
+    spaceAndBudget: '', // 공간과 예산
+    customerInterest: '', // 주요 고객 관심사
+    theme: '', // 이벤트 주제
   });
 
-  const [imageUrl, setImageUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [generatedPlan, setGeneratedPlan] = useState('');
+  const [loadingIndoor, setLoadingIndoor] = useState(false); // 실내 기획 로딩 상태
+  const [loadingOutdoor, setLoadingOutdoor] = useState(false); // 실외 기획 로딩 상태
+  const [loadingTimetable, setLoadingTimetable] = useState(false); // 타임테이블 로딩 상태
+  const [showTimetableButton, setShowTimetableButton] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -24,121 +25,148 @@ const Task2Page = () => {
     });
   };
 
-  const handleGenerateImage = async () => {
-    setLoading(true);
-    setErrorMessage('');
-
+  const handleGenerateIndoorPlan = async () => {
+    setLoadingIndoor(true);
     try {
-      const response = await axios.post('http://localhost:5000/task2/generate-image2', formData);
-
-      if (response.data.imageData) {
-        const imageSrc = `data:image/png;base64,${response.data.imageData}`;
-        setImageUrl(imageSrc);
-      } else {
-        setErrorMessage('이미지를 생성할 수 없습니다.');
-      }
+      const response = await axios.post('http://localhost:5000/task2/generate-indoor-event-plan', {
+        ...formData,
+        environment: '실내', // 환경 설정
+      });
+      setGeneratedPlan(response.data.eventPlan || '기획 생성 중 오류가 발생했습니다.');
+      setShowTimetableButton(true);
     } catch (error) {
-      console.error('Error generating image:', error);
-      setErrorMessage('이미지를 생성하는 중 문제가 발생했습니다.');
+      console.error('Error generating indoor event plan:', error);
+      setGeneratedPlan('기획 생성 중 오류가 발생했습니다.');
     } finally {
-      setLoading(false);
+      setLoadingIndoor(false);
     }
   };
 
-  const handleDownload = () => {
-    if (!imageUrl) return;
+  const handleGenerateOutdoorPlan = async () => {
+    setLoadingOutdoor(true);
+    try {
+      const response = await axios.post('http://localhost:5000/task2/generate-outdoor-event-plan', {
+        ...formData,
+        environment: '실외', // 환경 설정
+      });
+      setGeneratedPlan(response.data.eventPlan || '기획 생성 중 오류가 발생했습니다.');
+      setShowTimetableButton(true);
+    } catch (error) {
+      console.error('Error generating outdoor event plan:', error);
+      setGeneratedPlan('기획 생성 중 오류가 발생했습니다.');
+    } finally {
+      setLoadingOutdoor(false);
+    }
+  };
 
-    const a = document.createElement('a');
-    a.href = imageUrl;
-    a.download = 'generated_image.png'; // 다운로드할 파일 이름
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownloadTimetable = async () => {
+    setLoadingTimetable(true);
+    try {
+      const response = await axios.post(
+        'http://localhost:5000/task2/download-timetable',
+        formData,
+        { responseType: 'blob' }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'event_timetable.docx');
+      document.body.appendChild(link);
+      link.click();
+    } catch (error) {
+      console.error('Error downloading timetable:', error);
+    } finally {
+      setLoadingTimetable(false);
+    }
   };
 
   return (
     <div className="container">
       <div className="form-container">
-        <h1>광고 이미지 생성</h1>
-        <div className="form-group">
-          <label>회사명</label>
-          <input
-            type="text"
-            name="companyName"
-            value={formData.companyName}
-            onChange={handleChange}
-            placeholder="회사명을 입력하세요"
-          />
+        <h1>부스/이벤트 기획</h1>
+        {Object.keys(formData).map((key) => (
+          <div className="form-group" key={key}>
+            <label>
+              {{
+                goal: 'Goal',
+                targetAudience: 'Target Audience',
+                spaceAndBudget: 'Space and Budget',
+                customerInterest: 'Customer Interest',
+                theme: 'Event Theme',
+              }[key]}
+            </label>
+            <input
+              type="text"
+              name={key}
+              value={formData[key]}
+              onChange={handleChange}
+              placeholder={{
+                goal: '이벤트의 목적을 입력하세요.',
+                targetAudience: '이벤트 대상을 입력하세요.',
+                spaceAndBudget: '예: 10평, 200만 원',
+                customerInterest: '예: 친환경 제품, SNS 활동',
+                theme: '예: 자연 친화적인 라이프스타일',
+              }[key]}
+            />
+          </div>
+        ))}
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', justifyContent: 'center' }}>
+          <button
+            className="generate-button"
+            onClick={handleGenerateIndoorPlan}
+            disabled={loadingIndoor || loadingOutdoor}
+          >
+            {loadingIndoor ? '실내 기획 생성 중...' : '실내 기획 생성'}
+          </button>
+          <button
+            className="generate-button"
+            onClick={handleGenerateOutdoorPlan}
+            disabled={loadingIndoor || loadingOutdoor}
+          >
+            {loadingOutdoor ? '실외 기획 생성 중...' : '실외 기획 생성'}
+          </button>
         </div>
-        <div className="form-group">
-          <label>제품명</label>
-          <input
-            type="text"
-            name="productName"
-            value={formData.productName}
-            onChange={handleChange}
-            placeholder="제품명을 입력하세요"
-          />
-        </div>
-        <div className="form-group">
-          <label>제품 기능 및 효과</label>
-          <input
-            type="text"
-            name="productInfo"
-            value={formData.productInfo}
-            onChange={handleChange}
-            placeholder="제품의 기능 및 효과를 입력하세요"
-          />
-        </div>
-        <div className="form-group">
-          <label>시각적 요소</label>
-          <input
-            type="text"
-            name="symbol"
-            value={formData.symbol}
-            onChange={handleChange}
-            placeholder="시각적 요소(예: 물방울)를 입력하세요"
-          />
-        </div>
-        <div className="form-group">
-          <label>키워드</label>
-          <input
-            type="text"
-            name="keywords"
-            value={formData.keywords}
-            onChange={handleChange}
-            placeholder="강조하고 싶은 키워드를 입력하세요"
-          />
-        </div>
-        <div className="form-group">
-          <label>색상</label>
-          <input
-            type="text"
-            name="color"
-            value={formData.color}
-            onChange={handleChange}
-            placeholder="원하는 분위기의 색상을 입력하세요"
-          />
-        </div>
-
-        <button className="generate-button" onClick={handleGenerateImage} disabled={loading}>
-          {loading ? '생성 중...' : '이미지 생성'}
-        </button>
+        {showTimetableButton && (
+          <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+            <button
+              className="generate-button"
+              onClick={handleDownloadTimetable}
+              disabled={loadingTimetable}
+            >
+              {loadingTimetable ? '타임 테이블 생성 중...' : '타임 테이블 다운로드'}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="info-container">
-        <h2>생성된 광고 이미지</h2>
-        {errorMessage && <p className="error-message">{errorMessage}</p>}
-        {imageUrl ? (
-          <div>
-            <img src={imageUrl} alt="Generated Advertisement" style={{ maxWidth: '100%', height: 'auto' }} />
-            <button className="download-button" onClick={handleDownload}>
-              이미지 다운로드
-            </button>
-          </div>
-        ) : (
-          <div>이미지 생성 버튼을 눌러주세요!</div>
-        )}
+        <h2>부스/이벤트 기획</h2>
+        <div
+          className="generated-info"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: generatedPlan ? 'auto' : '200px',
+            border: '1px dashed #ccc', 
+            borderRadius: '0', 
+            padding: '1rem',
+            backgroundColor: '#f9f9f9',
+            fontSize: '1.2em',
+          }}
+        >
+          <pre
+            style={{
+              whiteSpace: 'pre-wrap',
+              wordWrap: 'break-word',
+              fontSize: '1em',
+              textAlign: generatedPlan ? 'left' : 'center',
+            }}
+          >
+            {generatedPlan || '기획 생성 버튼을 눌러주세요!'}
+          </pre>
+        </div>
       </div>
     </div>
   );
