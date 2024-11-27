@@ -17,6 +17,9 @@
         <button onclick="signup()">회원가입</button>
     </div>
 
+    <!-- 새로운 채팅 시작 버튼 -->
+    <button onclick="startNewChat()">새로운 채팅 시작</button>
+
     <!-- 로그인 폼 -->
     <div>
         <h3>로그인</h3>
@@ -44,20 +47,22 @@
     <h3>검색 기록</h3>
     <div id="history"></div>
 
-    <!-- 상세 대화 표시 영역 -->
-    <h3>상세 대화</h3>
+    <!-- 대화 내용 표시 영역 -->
+    <h3>상세 대화 내용</h3>
     <div id="conversation"></div>
 
     <script>
         let token = ""; // 로그인 후에 받을 JWT 토큰
+        let selectedTitle = ""; // 선택된 제목
+        let selectedHistoryId = null;
 
-        // 회원가입 함수
+        // 회원가입 함수 
         async function signup() {
             const username = document.getElementById('signup-username').value;
             const password = document.getElementById('signup-password').value;
             const email = document.getElementById('signup-email').value;
 
-            const response = await fetch('http://54.164.175.7:5000/signup', {  // 수정된 URL
+            const response = await fetch('http://54.164.175.7:5000/signup', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -74,7 +79,7 @@
             const username = document.getElementById('login-username').value;
             const password = document.getElementById('login-password').value;
 
-            const response = await fetch('http://54.164.175.7:5000/login', {  // 수정된 URL
+            const response = await fetch('http://54.164.175.7:5000/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -86,6 +91,7 @@
             if (response.ok && data.access_token) {
                 token = data.access_token;
                 alert("로그인 성공");
+                loadHistory(); // 로그인 후 기존 검색 기록 로드
             } else {
                 alert(data.error || "로그인 실패");
             }
@@ -99,15 +105,22 @@
 
         // 질문 보내기 함수
         async function askQuestion() {
+            if (!selectedHistoryId) {
+                alert("새로운 채팅을 시작하거나 기존 대화를 선택하세요.");
+                return;
+            }
             const userInput = document.getElementById('question').value;
 
-            const response = await fetch('http://54.164.175.7:5000/chat', {  // 서버 IP 주소 사용
-                method: 'POST',  // POST 요청
+            const response = await fetch('http://54.164.175.7:5000/chat', {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify({ message: userInput }),
+                body: JSON.stringify({
+                    title: selectedTitle,
+                    message: userInput
+                }),
             });
 
             const data = await response.json();
@@ -124,66 +137,64 @@
             const response = await fetch('http://54.164.175.7:5000/get_history', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
                 }
             });
             const history = await response.json();
             const historyDiv = document.getElementById('history');
-            historyDiv.innerHTML = ''; // 초기화
+            historyDiv.innerHTML = "";  // 초기화
 
             history.forEach(record => {
                 const recordElement = document.createElement('div');
-                recordElement.innerHTML = `
-                    <span>${record.title || '제목 없음'}</span>
-                    <button onclick="loadConversation(${record.id})">보기</button>
-                    <button onclick="deleteConversation(${record.id})">삭제</button>
-                `;
+                recordElement.innerText = record.title; // 제목만 표시
+                recordElement.onclick = () => {
+                    selectedTitle = record.title;  // 제목 저장
+                    selectedHistoryId = record.id; // 기록 ID 저장
+                    alert("선택한 제목: " + record.title);
+                    alert("선택한 ID: " + record.id);
+                    loadConversation(record.id); // 상세 기록 불러오기
+                }
                 historyDiv.appendChild(recordElement);
             });
+        }
+
+        // 새로운 채팅 시작 함수
+        async function startNewChat() {
+            const response = await fetch('http://54.164.175.7:5000/new_chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ message: "" }) // 빈 메시지 전달
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                selectedTitle = ""; // 선택된 제목 초기화
+                selectedHistoryId = null; // 기록 ID 초기화
+                document.getElementById('response').innerText = ""; // GPT 답변 영역 초기화
+                document.getElementById('question').value = ""; // 입력된 질문 초기화
+                alert("새로운 채팅이 시작되었습니다.");
+                loadHistory(); // 새 검색 기록 로드
+            } else {
+                alert(data.error || "채팅 시작 실패");
+            }
         }
 
         // 상세 대화 불러오기 함수
         async function loadConversation(historyId) {
             const response = await fetch(`http://54.164.175.7:5000/get_conversation/${historyId}`, {
                 method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Authorization': `Bearer ${token}` },
             });
             const conversationData = await response.json();
             const conversationDiv = document.getElementById('conversation');
-            if (response.ok) {
-                conversationDiv.innerHTML = `
-                    <p><strong>질문:</strong> ${conversationData.query}</p>
-                    <p><strong>답변:</strong> ${conversationData.response}</p>
-                `;
-            } else {
-                conversationDiv.innerHTML = `<p><strong>Error:</strong> ${conversationData.error}</p>`;
-            }
-        }
-
-        // 삭제 함수
-        async function deleteConversation(historyId) {
-            if (!confirm("정말로 이 대화를 삭제하시겠습니까?")) return;
-
-            const response = await fetch(`http://54.164.175.7:5000/delete_conversation/${historyId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                alert(data.message);
-                loadHistory(); // 삭제 후 기록 새로 로드
-            } else {
-                alert(data.error || "대화 삭제에 실패했습니다.");
-            }
+            conversationDiv.innerHTML = `<p><strong>질문:</strong> ${conversationData.query}</p><p><strong>답변:</strong> ${conversationData.response}</p>`;
         }
 
         // 페이지 로드 시 검색 기록 불러오기
-        window.onload = function () {
+        window.onload = function() {
             if (token) loadHistory();
         };
     </script>

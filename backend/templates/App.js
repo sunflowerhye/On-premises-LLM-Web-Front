@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import './App.css';
-import Signup from './signup';
-import Login from './login';
+import Signup from '../signup';
+import Login from '../login';
 
 function App() {
   const [message, setMessage] = useState('');
