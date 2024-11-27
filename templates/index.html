@@ -53,9 +53,9 @@
 
     <script>
         let token = ""; // 로그인 후에 받을 JWT 토큰
-        let currentConversationId = null; // 현재 채팅 ID
-
-        // 회원가입 함수
+        let selectedTitle = ""; // 선택된 제목
+        let selectedHistoryId = null;
+        // 회원가입 함수 
         async function signup() {
             const username = document.getElementById('signup-username').value;
             const password = document.getElementById('signup-password').value;
@@ -102,9 +102,15 @@
             alert("로그아웃 되었습니다.");
         }
 
+
+
         // 질문 보내기 함수
         async function askQuestion() {
-           
+
+          if (!selectedHistoryId) {
+        alert("새로운 채팅을 시작하거나 기존 대화를 선택하세요.");
+        return;
+    }
             const userInput = document.getElementById('question').value;
 
             const response = await fetch('http://54.164.175.7:5000/chat', {
@@ -114,7 +120,7 @@
                     'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    chat_id: currentConversationId, // 현재 채팅 ID
+                    title: selectedTitle,
                     message: userInput
                 }),
             });
@@ -143,12 +149,18 @@
             history.forEach(record => {
                 const recordElement = document.createElement('div');
                 recordElement.innerText = record.title; // 제목만 표시
-                recordElement.onclick = () => loadConversation(record.id); // 제목 클릭 시 상세 기록 불러오기
+                recordElement.onclick = () =>{
+   selectedTitle = record.title;  // 제목 저장
+    selectedHistoryId = record.id; // 기록 ID 저장
+    alert("선택한 제목: " + record.title);
+    alert("선택한 ID: " + record.id);
+    loadConversation(record.id); // 상세 기록 불러오기
+} // 제목 클릭 시 상세 기록 불러오기
                 historyDiv.appendChild(recordElement);
             });
         }
 
-        // 새로운 채팅 시작 함수
+         // 새로운 채팅 시작 함수
 async function startNewChat() {
     const response = await fetch('http://54.164.175.7:5000/new_chat', {
         method: 'POST',
@@ -156,17 +168,24 @@ async function startNewChat() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ new_chat: true }),  // 새로운 채팅을 시작하는 요청
+	body: JSON.stringify({})
     });
 
     const data = await response.json();
     if (response.ok) {
-        currentConversationId = data.conversation_id;  // 새로운 conversation_id를 클라이언트에서 관리
+       selectedTitle = ""; // 선택된 제목 초기화
+        selectedHistoryId = null; // 기록 ID 초기화
+        document.getElementById('response').innerText = ""; // GPT 답변 영역 초기화
+        document.getElementById('question').value = ""; // 입력된 질문 초기화
         alert("새로운 채팅이 시작되었습니다.");
+        loadHistory(); // 새 검색 기록 로드
+
     } else {
         alert(data.error || "채팅 시작 실패");
     }
 }
+
+
 
 
         // 상세 대화 불러오기 함수

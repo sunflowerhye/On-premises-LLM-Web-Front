@@ -21,7 +21,7 @@ def custom_unauthorized_response(err):
 
 @jwt.invalid_token_loader
 def custom_invalid_token_response(err):
-    logging.error(f"유표x토큰:{err}")
+    logging.error(f"유효x토큰:{err}")
     return jsonify({"error":set(err)}),401
 
 @jwt.expired_token_loader
@@ -130,18 +130,22 @@ def logout():
         logging.error(f"로그아웃 중 오류 발생: {e}")
         return jsonify({"error": str(e)}), 500
 
-
-
-# 질문을 보내고 GPT-4의 응답을 받는 엔드포인트
 @app.route('/chat', methods=['POST'])
 @jwt_required()
 def chat():
     try:
-        data = request.get_json()
-        message = data.get('message')
+        # JWT에서 사용자 이름 가져오기
         username = get_jwt_identity()
-        if not message:
-            return jsonify({"error": "메시지를 입력하세요."}), 400
+        data = request.get_json()
+
+        # 클라이언트에서 받은 데이터
+        title = data.get('title')  # 선택된 대화 제목
+        message  = data.get('message')  # 새로 입력한 질문
+
+        # 데이터 검증
+        if not title or not message:
+            logging.warning("잘못된 요청: 제목 또는 질문이 없음.")
+            return jsonify({"error": "제목과 질문을 모두 제공해야 합니다."}), 400
 
         # 사용자 ID 가져오기
         cursor = mysql.connection.cursor()
@@ -149,113 +153,65 @@ def chat():
         user_id = cursor.fetchone()
 
         if user_id is None:
-            logging.warning("Chat 실패: 사용자를 찾을 수 없습니다.")
+            logging.warning("사용자 조회 실패")
             return jsonify({"error": "사용자를 찾을 수 없습니다."}), 404
 
         user_id = user_id[0]
 
+        # 제목으로 conversation_id 찾기
+        cursor.execute(
+            "SELECT conversation_id FROM search_history WHERE user_id = %s AND title = %s",
+            (user_id, title)
+        )
+        conversation = cursor.fetchone()
 
-        # 대화 ddID 가져오기 또는 생성하기
-        conversation_id=data.get("conversation_id")
-        if conversation_id: #프론트에서 새로운 아이디 전달(new chat)
-         # 전달받은 conversation_id로 제목 가져오기
-            cursor.execute(
-                    """
-                    SELECT title FROM search_history
-                    WHERE conversation_id = %s AND user_id = %s
-                    """,
-                    (conversation_id, user_id)
-                 )
-            result = cursor.fetchone()
+        if not conversation:
+            logging.warning(f"대화 조회 실패: 제목 '{title}'에 해당하는 대화를 찾을 수 없음.")
+            return jsonify({"error": "해당 제목에 대한 대화를 찾을 수 없습니다."}), 404
 
-            if result:
-                title = result[0]
-            else:
-                # 잘못된 conversation_id일 경우 처리
-                title = None
-                logging.warning(f"Invalid conversation_id: {conversation_id}")
-                 # OpenAI API 호출
-            response = openai.ChatCompletion.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": message}],
-                max_tokens=150
-            )
-            gpt_response = response['choices'][0]['message']['content'].strip() if response['choices'] else "no response"
+        conversation_id = conversation[0]
 
-            if not gpt_response:
-                logging.error("응답 없음")
-
-    # 메시지와 응답 업데이트 (기록에 추가)
-            cursor.execute(
-                """
-                UPDATE search_history
-                SET response = IF(response IS NULL, %s, CONCAT(response, '\n\n', %s)),
-                query = CONCAT(query, '\n\n', %s)
-                WHERE conversation_id = %s AND user_id = %s
-                """,
-            (gpt_response, gpt_response, message, conversation_id, user_id)
-            )
-            mysql.connection.commit()
-
-
-        else:  # 기존대화
-            cursor.execute(
-                    """
-                    SELECT conversation_id FROM search_history
-                    WHERE user_id = %s
-                    ORDER BY title DESC LIMIT 1
-                    """,
-                    (user_id,)
-            )
-            result = cursor.fetchone()
-
-            if result:
-                conversation_id = result[0]
-                title=None
-            else:
-                conversation_id = str(uuid.uuid4())
-                title = message[:30]  # 앞 30자를 제목으로 사용
-
-            # 첫 메시지로 제목과 함께 기록 저장
-            cursor.execute(
-                """
-                INSERT INTO search_history (user_id, conversation_id, title, query, response)
-                VALUES (%s, %s, %s, %s, %s)
-                """,
-                (user_id, conversation_id, title, message, "답변")  # 첫 메시지의 응답은 나중에 업데이트
-            )
-            mysql.connection.commit()
-
-       
-              # OpenAI API 호출
+        # OpenAI API 호출 (GPT-4 응답 생성)
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[{"role": "user", "content": message}],
             max_tokens=150
         )
-        gpt_response = response['choices'][0]['message']['content'].strip() if response['choices'] else "no response"
+        gpt_response = response['choices'][0]['message']['content'].strip() if response['choices'] else "응답 없음"
 
         if not gpt_response:
-            logging.error("응답없음")
-        # 메시지와 응답 업데이트 (기록에 추가)
+            logging.error("응답 없음")
+            return jsonify({"error": "GPT-4 응답 없음"}), 500
+
+        # 기존 대화에 질문과 답변 추가
         cursor.execute(
             """
-            UPDATE search_history
-            SET response = IF(response IS NULL, %s, CONCAT(response, '\n\n', %s)),
-                query = CONCAT(query, '\n\n', %s)
-            WHERE conversation_id = %s AND user_id = %s
+            UPDATE search_history 
+            SET query = CONCAT(query, '\n', %s), response = CONCAT(response, '\n', %s)
+            WHERE user_id = %s AND conversation_id = %s
             """,
-            (gpt_response, gpt_response, message, conversation_id, user_id)
+            (message, gpt_response, user_id, conversation_id)
         )
+
+        # 변경 사항 저장
         mysql.connection.commit()
         cursor.close()
 
-        logging.info(f"Chat 성공: {username}, message: {message}")
-        return jsonify({"response": gpt_response, "conversation_id": conversation_id}), 200
+        logging.info(f"대화 업데이트 성공: 사용자 {username}, 제목 '{title}'")
+
+        return jsonify({
+            "message": "대화가 성공적으로 업데이트되었습니다.",
+            "title": title,
+            "new_query": message,
+            "response": gpt_response
+        }), 200
 
     except Exception as e:
-        logging.error(f"Chat 중 오류 발생: {e}")
+        logging.error(f"대화 업데이트 중 오류 발생: {e}")
         return jsonify({"error": str(e)}), 500
+        
+
+  
 
 
 
@@ -279,7 +235,8 @@ def new_chat():
 
        user_id=user_id[0]
 
-       cursor.execute("SELECT COUNT(*) FROM search_history WHERE user_id = %s",(user_id,))
+       cursor.execute("SELECT MAX(CAST(SUBSTRING(title, 3) AS UNSIGNED)) FROM search_history WHERE user_id = %s"
+,(user_id,))
        count=cursor.fetchone()[0]
        title=f"대화{count+1}"
 
@@ -410,5 +367,4 @@ def delete_conversation(history_id):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
-~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ~                                                                                          
+    app.run(host="0.0.0.0", port=5000, debug=True)                                                                          
