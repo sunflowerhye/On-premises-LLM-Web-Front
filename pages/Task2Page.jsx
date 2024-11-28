@@ -97,7 +97,7 @@ const handleDownload = async () => {
                             }),
                         ],
                         width: { size: 20, type: WidthType.PERCENTAGE },
-                        verticalAlign: VerticalAlign.CENTER, // 세로 가운데 정렬
+                        verticalAlign: VerticalAlign.CENTER, 
                     }),
                     new TableCell({
                         children: [
@@ -107,7 +107,7 @@ const handleDownload = async () => {
                             }),
                         ],
                         width: { size: 40, type: WidthType.PERCENTAGE },
-                        verticalAlign: VerticalAlign.CENTER, // 세로 가운데 정렬
+                        verticalAlign: VerticalAlign.CENTER, 
                     }),
                     new TableCell({
                         children: [
@@ -117,7 +117,7 @@ const handleDownload = async () => {
                             }),
                         ],
                         width: { size: 40, type: WidthType.PERCENTAGE },
-                        verticalAlign: VerticalAlign.CENTER, // 세로 가운데 정렬
+                        verticalAlign: VerticalAlign.CENTER, 
                     }),
                 ],
             }),
