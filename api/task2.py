@@ -1,153 +1,161 @@
-from flask import Blueprint, request, jsonify, send_file
-from common import call_openai_api
-from docx import Document
-from io import BytesIO
+from flask import Blueprint, request, jsonify
+from common import find_best_match, data, call_openai_api
 
 task2 = Blueprint('task2', __name__)
 
-@task2.route('/generate-indoor-event-plan', methods=['POST'])
-def generate_indoor_event_plan():
+def parse_file(file_content):
     try:
-        data = request.json
-        space_and_budget = data.get('spaceAndBudget', '10평, 200만 원')
+        # 파일 내용을 라인별로 나누기
+        lines = file_content.splitlines()
+        print(f"파싱 중인 파일 내용: {lines}")  # 디버깅을 위한 출력
+        parsed_data = {}
 
-        # 장소 추천 프롬프트
-        location_prompt = (
-            f"다음 조건에 맞는 실내 이벤트 장소를 추천해 주세요. 지역 이름(예: 성수, 홍대, 가로수길 등)만 제시하세요:\n"
-            f"1. 공간과 예산: {space_and_budget}\n"
-            f"2. 주요 고객 관심사: {data.get('customerInterest', '친환경 제품')}\n"
-            f"3. 이벤트 주제: {data.get('theme', '자연 친화적인 라이프스타일')}\n"
-        )
-        location_recommendation = call_openai_api([{"role": "user", "content": location_prompt}])
+        for line in lines:
+            # ':'를 기준으로 제품명과 성분을 분리
+            if ':' in line:
+                product_name, ingredients = line.split(":", 1)
+                ingredients_list = [ingredient.strip() for ingredient in ingredients.split(',')]  # 성분 분리
+                parsed_data[product_name.strip()] = ingredients_list
+            else:
+                print(f"형식 오류: '{line}' 라인에서 ':' 구분자가 없습니다.")
+                
+        print(f"파싱된 데이터: {parsed_data}")  # 파싱 결과를 출력
+        return parsed_data
+    except Exception as e:
+        print(f"파일 파싱 중 오류: {e}")
+        return None
 
-        # 이벤트 기획 프롬프트
-        prompt = (
-            f"다음은 기초 화장품 관련 실내 부스 이벤트 기획에 대한 정보입니다:\n"
-            f"1. 목적: {data.get('goal', '브랜드 인지도 향상')}\n"
-            f"2. 타겟층: {data.get('targetAudience', '20~30대 여성 고객')}\n"
-            f"3. 공간과 예산: {space_and_budget}\n"
-            f"4. 주요 고객 관심사: {data.get('customerInterest', '친환경 제품')}\n"
-            f"5. 이벤트 주제: {data.get('theme', '자연 친화적인 라이프스타일')}\n"
-            f"6. 추천 장소: {location_recommendation}\n\n"
-            f"위 내용을 바탕으로 체계적이고 창의적인 실내 부스 이벤트 기획서를 작성해 주세요. "
-            f"결과는 다음 항목을 포함해 주세요:\n"
-            f"1. 이벤트 개요\n"
-            f"2. 부스 디자인 및 구성\n"
-            f"3. 주요 활동 세부 내용\n"
-            f"4. 기대 효과"
-        )
-        event_plan = call_openai_api([{"role": "user", "content": prompt}])
-        return jsonify({'eventPlan': event_plan})
+
+# Task2: 성분 비교
+# @task2.route('/compare', methods=['POST'])
+# def compare():
+#     try:
+#         product1_name = request.json.get('product1', '')
+#         product2_name = request.json.get('product2', '')
+#         file_content = request.json.get('fileContent', '')  # 파일 내용이 있다면 받기
+
+#         # 파일 내용이 있으면 파싱하여 데이터에 반영
+#         if file_content:
+#             parsed_data = parse_file(file_content)
+#             if parsed_data:
+#                 # 파일에서 제공된 데이터를 사용하여 성분 비교를 진행
+#                 product1_name = parsed_data.get('product1', product1_name)
+#                 product2_name = parsed_data.get('product2', product2_name)
+
+#         # 제품명으로 매칭
+#         product1_match, product1_score = find_best_match(product1_name, '제품명')
+#         product2_match, product2_score = find_best_match(product2_name, '제품명')
+
+#         if not product1_match or not product2_match:
+#             return jsonify({'error': '입력된 제품명을 찾을 수 없습니다.'}), 404
+
+#         # 매칭된 데이터 가져오기
+#         product1_data = data[data['제품명'] == product1_match].iloc[0]
+#         product2_data = data[data['제품명'] == product2_match].iloc[0]
+
+#         # 성분 데이터 정리
+#         ingredients1 = set(product1_data['모든성분'].split(','))
+#         ingredients2 = set(product2_data['모든성분'].split(','))
+
+#         # 비교 결과 생성
+#         comparison = {
+#             'common_ingredients': list(ingredients1 & ingredients2),
+#             'unique_to_product1': list(ingredients1 - ingredients2),
+#             'unique_to_product2': list(ingredients2 - ingredients1)
+#         }
+
+#         return jsonify({
+#             'product1': {
+#                 'name': product1_match,
+#                 'score': product1_score,
+#                 'ingredients': list(ingredients1)
+#             },
+#             'product2': {
+#                 'name': product2_match,
+#                 'score': product2_score,
+#                 'ingredients': list(ingredients2)
+#             },
+#             'comparison': comparison
+#         })
+
+#     except Exception as e:
+#         print(f"Error in /compare endpoint: {e}")
+#         return jsonify({'error': f"서버 오류 발생: {e}"}), 500
+
+@task2.route('/compare', methods=['POST'])
+def compare():
+    try:
+        product1_name = request.json.get('product1', '').strip().lower()
+        product2_name = request.json.get('product2', '').strip().lower()
+        file_content = request.json.get('fileContent', '')  # 파일 내용이 있다면 받기
+
+        # 파일 내용이 있으면 파싱하여 데이터에 반영
+        if file_content:
+            parsed_data = parse_file(file_content)
+            if parsed_data:
+                # 파일에서 제공된 데이터를 사용하여 성분 비교를 진행
+                product1_name = parsed_data.get(product1_name, product1_name)
+                product2_name = parsed_data.get(product2_name, product2_name)
+
+        # 제품명으로 매칭
+        product1_match, product1_score = find_best_match(product1_name, '제품명')
+        product2_match, product2_score = find_best_match(product2_name, '제품명')
+
+        if not product1_match or not product2_match:
+            return jsonify({'error': '입력된 제품명을 찾을 수 없습니다.'}), 404
+
+        # 매칭된 데이터 가져오기
+        product1_data = data[data['제품명'] == product1_match].iloc[0]
+        product2_data = data[data['제품명'] == product2_match].iloc[0]
+
+        # 성분 데이터 정리 (소문자 및 공백 제거)
+        ingredients1 = set(ingredient.strip().lower() for ingredient in product1_data['모든성분'].split(','))
+        ingredients2 = set(ingredient.strip().lower() for ingredient in product2_data['모든성분'].split(','))
+
+        # 비교 결과 생성
+        comparison = {
+            'common_ingredients': list(ingredients1 & ingredients2),
+            'unique_to_product1': list(ingredients1 - ingredients2),
+            'unique_to_product2': list(ingredients2 - ingredients1)
+        }
+
+        return jsonify({
+            'product1': {
+                'name': product1_match,
+                'score': product1_score,
+                'ingredients': list(ingredients1)
+            },
+            'product2': {
+                'name': product2_match,
+                'score': product2_score,
+                'ingredients': list(ingredients2)
+            },
+            'comparison': comparison
+        })
 
     except Exception as e:
-        print(f"Error in /generate-indoor-event-plan: {e}")
+        print(f"Error in /compare endpoint: {e}")
         return jsonify({'error': f"서버 오류 발생: {e}"}), 500
 
 
-@task2.route('/generate-outdoor-event-plan', methods=['POST'])
-def generate_outdoor_event_plan():
+# Task2: 성분 설명
+@task2.route('/explain', methods=['POST'])
+def explain():
     try:
-        data = request.json
-        space_and_budget = data.get('spaceAndBudget', '소형 천막, 100만 원')
+        ingredients = request.json.get('ingredients', [])
+        if not ingredients:
+            return jsonify({'explanation': '성분 데이터가 없습니다.'}), 400
 
-        # 장소 추천 프롬프트
-        location_prompt = (
-            f"다음 조건에 맞는 실외 이벤트 장소를 추천해 주세요. 지역 이름(예: 성수, 홍대, 가로수길 등)만 제시하세요:\n"
-            f"1. 공간과 예산: {space_and_budget}\n"
-            f"2. 주요 고객 관심사: {data.get('customerInterest', 'SNS 활동')}\n"
-            f"3. 이벤트 주제: {data.get('theme', '활기찬 여름 테마')}\n"
-        )
-        location_recommendation = call_openai_api([{"role": "user", "content": location_prompt}])
+        # OpenAI API를 사용하여 설명 생성
+        messages = [{"role": "system", "content": "당신은 한국어로 성분 정보를 설명하는 어시스턴트입니다."}]
+        for ingredient in ingredients:
+            messages.append({"role": "user", "content": f"{ingredient} 성분은 스킨케어에서 어떤 효과가 있나요?"})
 
-        # 이벤트 기획 프롬프트
-        prompt = (
-            f"다음은 기초 화장품 관련 실외 부스 이벤트 기획에 대한 정보입니다:\n"
-            f"1. 목적: \n{data.get('goal', '브랜드 홍보')}\n"
-            f"2. 타겟층: \n{data.get('targetAudience', '20~30대 젊은 소비자')}\n"
-            f"3. 공간과 예산: \n{space_and_budget}\n"
-            f"4. 주요 고객 관심사: \n{data.get('customerInterest', 'SNS 활동')}\n"
-            f"5. 이벤트 주제: \n{data.get('theme', '활기찬 여름 테마')}\n"
-            f"6. 추천 장소: \n{location_recommendation}\n\n"
-            f"위 내용을 바탕으로 체계적이고 창의적인 실외 부스 이벤트 기획서를 작성해 주세요. "
-            f"결과는 다음 항목을 포함해 주세요:\n"
-            f"1. 이벤트 개요\n"
-            f"2. 부스 디자인 및 구성\n"
-            f"3. 주요 활동 세부 내용\n"
-            f"4. 기대 효과"
-        )
-        event_plan = call_openai_api([{"role": "user", "content": prompt}])
-        return jsonify({'eventPlan': event_plan})
+        explanation = call_openai_api(messages)
+        return jsonify({'explanation': explanation})
 
     except Exception as e:
-        print(f"Error in /generate-outdoor-event-plan: {e}")
+        print(f"Error in /explain endpoint: {e}")
         return jsonify({'error': f"서버 오류 발생: {e}"}), 500
-
-#타임 테이블 생성
-@task2.route('/download-timetable', methods=['POST'])
-def download_timetable():
-    try:
-        data = request.json
-        space_and_budget = data.get('spaceAndBudget', '10평, 200만 원')
-        environment = data.get('environment', '실내')
-
-        # 장소 추천 프롬프트
-        location_prompt = (
-            f"다음 조건에 맞는 {environment} 이벤트 장소를 추천해 주세요(넓은 지역 이름만 제공):\n"
-            f"1. 공간과 예산: {space_and_budget}\n"
-            f"2. 주요 고객 관심사: {data.get('customerInterest', '친환경 제품')}\n"
-            f"3. 이벤트 주제: {data.get('theme', '자연 친화적인 라이프스타일')}\n"
-        )
-        location_recommendation = call_openai_api([{"role": "user", "content": location_prompt}])
-
-        # 워드 문서 생성
-        doc = Document()
-        doc.add_heading('이벤트 기획서', level=1)
-        doc.add_paragraph(f"목적: {data.get('goal', '브랜드 홍보')}")
-        doc.add_paragraph(f"타겟층: {data.get('targetAudience', '20~30대 소비자')}")
-        doc.add_paragraph(f"공간과 예산: {space_and_budget}")
-        doc.add_paragraph(f"주요 고객 관심사: {data.get('customerInterest', '친환경 제품')}")
-        doc.add_paragraph(f"이벤트 주제: {data.get('theme', '자연 친화적인 라이프스타일')}")
-        doc.add_paragraph(f"추천 장소: {location_recommendation}")
-        doc.add_paragraph(f"환경: {environment}")
-        doc.add_heading('타임 테이블', level=2)
-
-        # 타임 테이블 표 생성
-        table = doc.add_table(rows=10, cols=2)  
-        table.style = 'Table Grid'
-        headers = table.rows[0].cells
-        headers[0].text = "시간"
-        headers[1].text = "활동"
-
-        # 시간대별 일정
-        schedule = [
-            ("11:00 - 12:00", " "),
-            ("12:00 - 13:00", " "),
-            ("13:00 - 14:00", " "),
-            ("14:00 - 15:00", " "),
-            ("15:00 - 16:00", " "),
-            ("16:00 - 17:00", " "),
-            ("17:00 - 18:00", " "),
-            ("18:00 - 19:00", " "),
-            ("19:00 - 20:00", " "),
-        ]
-
-        for i, (time, activity) in enumerate(schedule, start=1):
-            row = table.rows[i].cells
-            row[0].text = time
-            row[1].text = activity
-
-        # 파일 저장 및 반환
-        file_stream = BytesIO()
-        doc.save(file_stream)
-        file_stream.seek(0)
-
-        return send_file(
-            file_stream,
-            as_attachment=True,
-            download_name='event_timetable.docx',
-            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        )
-
-    except Exception as e:
-        print(f"Error in /download-timetable: {e}")
-        return jsonify({'error': f"서버 오류 발생: {e}"}), 500
+    
+    
